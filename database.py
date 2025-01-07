@@ -72,7 +72,8 @@ class Database:
     def update_last_message_id(self, message_id):
         return self.collection.update_one({}, {'$set': {'last_message_id': message_id}})
     
-    def save_text(self, text):
+    def save_text(self, text, collection_name: str):
+        self.collection = Database._db[collection_name]
         return self.collection.update_one({}, {'$push': {'texts': {'text': text}}})
     
     def get_collection_name_by_channel_id(self, channel_id: str):

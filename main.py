@@ -1,5 +1,6 @@
 from __future__ import annotations
 from telebot import types
+from telebot.types import ReactionTypeEmoji
 from bot import BOT as bot
 import traceback
 import context
@@ -27,10 +28,11 @@ def channel_handler(message):
         return
     
     user_collection = db.get_collection_name_by_channel_id(str(channel_data['user_id']))
-    db.set_collection(user_collection)
-    db.save_text(message.text)
+    print(user_collection)
+    print(type(user_collection))
+    db.save_text(message.text, user_collection)
 
-    bot.edit_message_text(f"<i>Saved</i>\n{message.text}", channel_data['user_id'], channel_data['message_id'], parse_mode='html')
+    bot.set_message_reaction(channel_data['user_id'], channel_data['message_id'], [ReactionTypeEmoji('👍')], is_big=False)
 
 @bot.message_handler(commands=['start'])
 def welcome(message):
