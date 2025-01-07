@@ -62,8 +62,8 @@ class Database:
                     return item['translations']
         return None
     
-    def get_texts(self):
-        "Get all 'text' enrties from texts obejcts"
+    def get_texts(self, collection_name: str):
+        self.collection = Database._db[collection_name]
         result = self.collection.find_one({})
         if result:
             return [item['text'] for item in result['texts']]
@@ -94,7 +94,8 @@ class Database:
                     return item['translations']
         return None
     
-    def delete_text(self, text):
+    def delete_text(self, text, collection_name: str):
+        self.collection = Database._db[collection_name]
         self.collection.update_one({}, {'$pull': {'texts': {'text': text}}})
 
     def save_word(self, word, language, translations, examples):

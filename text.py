@@ -216,9 +216,8 @@ class Text(State):
 
                 text_to_delete = self.text
 
-                db.set_collection(str(user_data['user_id']))
-                db.delete_text(text_to_delete)
-                self.all_texts = db.get_texts()
+                db.delete_text(text_to_delete, str(user_data['user_id']))
+                self.all_texts = db.get_texts(str(user_data['user_id']))
 
                 if len(self.all_texts) == 1:
                     self.text_count = 0
@@ -233,9 +232,14 @@ class Text(State):
 
                 elif self.text_count < len(self.all_texts)-1:
                     self.text = self.all_texts[self.text_count]
+
+                elif self.text_count > len(self.all_texts)-1:
+                    self.text_count = 0
+                    self.text = self.all_texts[self.text_count]
                 
+                self.visual_text = self.text
                 markup = self.text_buttons(message, call)
-                bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.text, reply_markup=markup, parse_mode='html')
+                bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.visual_text, reply_markup=markup, parse_mode='html')
                 return
 
             if call.data == 'reverse':
@@ -579,9 +583,8 @@ class Text(State):
 
         self.sent_count = 0
         self.last_message_id = user_data['message_id']
-    
-        db.set_collection(str(user_data['user_id']))
-        self.all_texts = db.get_texts()
+        
+        self.all_texts = db.get_texts(str(user_data['user_id']))
         
         if self.all_texts:
             self.text = self.all_texts[0]
