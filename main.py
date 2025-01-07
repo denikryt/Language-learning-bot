@@ -26,10 +26,8 @@ def channel_handler(message):
 
     if str(channel_data['user_id']) != str(MY_CHANNEL_ID):
         return
-    
+    print(f'New message in channel!\n{message.text}')
     user_collection = db.get_collection_name_by_channel_id(str(channel_data['user_id']))
-    print(user_collection)
-    print(type(user_collection))
     db.save_text(message.text, user_collection)
 
     bot.set_message_reaction(channel_data['user_id'], channel_data['message_id'], [ReactionTypeEmoji('👍')], is_big=False)
