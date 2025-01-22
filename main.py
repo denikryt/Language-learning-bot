@@ -12,10 +12,7 @@ import database
 import text
 import nltk
 from dotenv import load_dotenv
-from flask import Flask, request
 import os
-
-app = Flask(__name__)
 
 load_dotenv()
 MY_ID = os.getenv('MY_ID')
@@ -93,13 +90,6 @@ def get_user_data(message=None, call=None, channel=None):
         'user_id': user_id,
         'message_id': message_id
     }
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    json_str = request.get_data().decode('UTF-8')
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return '!', 200
 
 bot.send_message(MY_ID, 'helo')
 
