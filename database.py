@@ -142,4 +142,25 @@ class Database:
 
         self.collection.update_one({'words.word': word}, {'$set': {'words.$.level': level}})
 
+    def get_words_by_example(self, example, collection_name: str):
+        self.collection = Database._db[collection_name]
+
+        result = self.collection.find_one({})
+        if result:
+            words = []
+            for item in result['words']:
+                if example in item['examples']:
+                    words.append(item['word'])
+            return words
+        return None
+    
+    def text_exists(self, text, collection_name: str):
+        self.collection = Database._db[collection_name]
+
+        result = self.collection.find_one({'texts.text': text})
+        if result:
+            return True
+        return False
+
+
 db = Database()

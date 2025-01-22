@@ -12,14 +12,6 @@ class Text(State):
     Description
     """
 
-    # langs = {
-    #     'Английский' : 'en',
-    #     'Турецкий' : 'tr' ,
-    #     'Французский' : 'fr',
-    #     'Итальянский' : 'it',
-    #     'Китайский' : 'zh-tw',
-    # }
-    
     # sent_count = 0
     text_count = 0
     # output_messages = 0
@@ -79,7 +71,7 @@ class Text(State):
 
             if call.data == 'translate':
                 self.translating_text = True
-                self.translated_text = GoogleTranslator(source='auto', target='ru').translate(self.visual_text)
+                self.translated_text = GoogleTranslator(source='auto', target='ru').translate(self.remove_underline(self.visual_text))
                 self.visual_text = self.translated_text
                 markup = self.text_buttons(message, call)
                 bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.visual_text, reply_markup=markup, parse_mode='html')
@@ -87,9 +79,9 @@ class Text(State):
 
             if call.data == 'original':
                 self.translating_text = False
-                self.visual_text = self.text
+                self.visual_text = self.underline_existed_words(str(user_data['user_id']), self.text)
                 markup = self.text_buttons(message, call)
-                bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.text, reply_markup=markup, parse_mode='html')
+                bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.visual_text, reply_markup=markup, parse_mode='html')
                 return
 
             if call.data == 'next':
@@ -102,12 +94,12 @@ class Text(State):
                 elif self.text_count == len(self.all_texts)-1:
                     self.text_count = 0
                     self.text = self.all_texts[self.text_count]
-                    self.visual_text = self.text
+                    self.visual_text = self.underline_existed_words(str(user_data['user_id']), self.text)
 
                 elif self.text_count >= 0:
                     self.text_count += 1
                     self.text = self.all_texts[self.text_count]
-                    self.visual_text = self.text
+                    self.visual_text = self.underline_existed_words(str(user_data['user_id']), self.text)
 
                 if self.building:
                     self.sent_count = 0
@@ -116,7 +108,7 @@ class Text(State):
                     self.build_sent(message, call)
                 else:
                     markup = self.text_buttons(message, call)
-                    bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.text, reply_markup=markup, parse_mode='html')
+                    bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.visual_text, reply_markup=markup, parse_mode='html')
                 return
 
             if call.data == 'previous':
@@ -129,12 +121,12 @@ class Text(State):
                 elif self.text_count == 0:
                     self.text_count = len(self.all_texts)-1
                     self.text = self.all_texts[self.text_count]
-                    self.visual_text = self.text
+                    self.visual_text = self.underline_existed_words(str(user_data['user_id']), self.text)
 
                 elif self.text_count <= len(self.all_texts)-1:
                     self.text_count -= 1
                     self.text = self.all_texts[self.text_count]
-                    self.visual_text = self.text
+                    self.visual_text = self.underline_existed_words(str(user_data['user_id']), self.text)
 
                 if self.building:
                     self.sent_count = 0
@@ -237,7 +229,7 @@ class Text(State):
                     self.text_count = 0
                     self.text = self.all_texts[self.text_count]
                 
-                self.visual_text = self.text
+                self.visual_text = self.underline_existed_words(str(user_data['user_id']), self.text)
                 markup = self.text_buttons(message, call)
                 bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.visual_text, reply_markup=markup, parse_mode='html')
                 return
@@ -373,7 +365,7 @@ class Text(State):
         user_data = self.get_user_data(message=message, call=call)
 
         if self.all_text:
-            self.visual_text = self.text
+            self.visual_text = self.underline_existed_words(str(user_data['user_id']), self.text)
             visibility_button = 'collapse'
             visibility_callback = 'roll_up'
         else:
@@ -588,9 +580,9 @@ class Text(State):
         
         if self.all_texts:
             self.text = self.all_texts[0]
-            self.visual_text = self.text
+            self.visual_text = self.underline_existed_words(str(user_data['user_id']), self.text)
             markup = self.text_buttons(message, call)
-            bot.send_message(user_data['user_id'], self.visual_text, reply_markup=markup)
+            bot.send_message(user_data['user_id'], self.visual_text, reply_markup=markup, parse_mode='html')
             
             self.last_message_id += 1
             self.text_window = self.last_message_id
@@ -598,6 +590,19 @@ class Text(State):
         else:
             self.text = None
             bot.send_message(user_data['user_id'], 'Пока нет текстов!')
+
+    def underline_existed_words(self, user_id, text):
+        words = db.get_words_by_example(example=text, collection_name=user_id)
+        if words:
+            for word in words:
+                text = text.replace(word, f'<u>{word}</u>')
+
+        return text
+
+    def remove_underline(self, text):
+        text = text.replace('<u>', '')
+        text = text.replace('</u>', '')
+        return text
 
     def hello(self, message=None, call=None, data=None, reason=None, last_message=None, wiki_page=None):
         user_name, user_id, message_id = self.vars(message,call)

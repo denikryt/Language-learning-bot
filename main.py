@@ -1,6 +1,7 @@
 from __future__ import annotations
+import telebot
 from telebot import types
-from telebot.types import ReactionTypeEmoji
+from telebot.types import ReactionTypeEmoji 
 from bot import BOT as bot
 import traceback
 import context
@@ -11,11 +12,15 @@ import database
 import text
 import nltk
 from dotenv import load_dotenv
+from flask import Flask, request
 import os
+
+app = Flask(__name__)
 
 load_dotenv()
 MY_ID = os.getenv('MY_ID')
 MY_CHANNEL_ID = os.getenv('MY_CHANNEL_ID')
+WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 
 nltk.download('punkt')
 db = database.Database()
@@ -89,6 +94,13 @@ def get_user_data(message=None, call=None, channel=None):
         'message_id': message_id
     }
 
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return '!', 200
+
 bot.send_message(MY_ID, 'helo')
 
 if __name__ == "__main__":
@@ -96,8 +108,5 @@ if __name__ == "__main__":
 
     context = context.Context(default.Default())
     bot.remove_webhook()
-    bot.polling(none_stop=True)
-
-
-
-
+    print("Starting bot with polling...")
+    bot.polling(none_stop=True, interval=1, timeout=20)

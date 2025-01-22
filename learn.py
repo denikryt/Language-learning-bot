@@ -1,4 +1,3 @@
-# from state import State
 from collections import OrderedDict
 from telebot import types, apihelper
 from bot import BOT as bot
@@ -181,9 +180,6 @@ class Learn():
         markup = types.InlineKeyboardMarkup(row_width=1)
         markup.add(newWord, finish)
 
-        new_level = self.attempts + self.help
-        db.update_word_level(word=self.random_word, collection_name=str(user_data['user_id']), level=new_level)
-
         bot.delete_message(user_data['user_id'],message_id=self.keyboard_message)
         bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
 
@@ -280,8 +276,11 @@ class Learn():
         if text == word:
             self.testing = False
             self.spelling = word
-            mark = self.attempts + self.help
-            self.guessed.append(f"<b>{self.random_word}</b> : {str(self.mark)} +{str(mark)}")
+
+            new_mark = self.attempts + self.help
+            db.update_word_level(word=self.random_word, collection_name=str(user_data['user_id']), level=new_mark + self.mark)
+
+            self.guessed.append(f"<b>{self.random_word}</b> : {str(self.mark)} +{str(new_mark)}")
             self.send_win_message(message, call)
             return
 
@@ -292,8 +291,11 @@ class Learn():
 
             if self.spelling == word:
                 self.testing = False
-                mark = self.attempts + self.help
-                self.guessed.append(f"<b>{self.random_word}</b> : {str(self.mark)} +{str(mark)}")
+
+                new_mark = self.attempts + self.help
+                db.update_word_level(word=self.random_word, collection_name=str(user_data['user_id']), level=new_mark + self.mark)
+
+                self.guessed.append(f"<b>{self.random_word}</b> : {str(self.mark)} +{str(new_mark)}")
                 self.send_win_message(message, call)
             else:
                 self.send_correct_message(message, call)
@@ -312,9 +314,7 @@ class Learn():
             return
                 
     def send_message(self, message=None, call=None, case=None, message_id=None, user_id=None):
-        # if not user_id:
-        #     user_name, user_id = self.name_id(message, call)
-
+        
         cases = ['correct', 'incorrect', 'help'] 
         result = ['win', 'fast_win', 'loose', 'give_up'] 
 
