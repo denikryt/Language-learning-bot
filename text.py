@@ -87,6 +87,8 @@ class Text(State):
             if call.data == 'next':
                 self.reverse = False
                 self.translating_text = False
+                self.changing = False
+                self.adding = False
 
                 if len(self.all_texts) == 1:
                     return
@@ -114,6 +116,8 @@ class Text(State):
             if call.data == 'previous':
                 self.reverse = False
                 self.translating_text = False
+                self.changing = False
+                self.adding = False
 
                 if len(self.all_texts) == 1:
                     return
