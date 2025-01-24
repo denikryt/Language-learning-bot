@@ -28,6 +28,7 @@ def channel_handler(message):
 
     if str(channel_data['user_id']) != str(MY_CHANNEL_ID):
         return
+    
     print(f'New message in channel!\n{message.text}')
     user_collection = db.get_collection_name_by_channel_id(str(channel_data['user_id']))
     db.save_text(message.text, user_collection)
@@ -39,7 +40,7 @@ def welcome(message):
     user_data = get_user_data(message=message)
 
     if user_data['user_id'] != int(MY_ID):
-        return
+        return 
     
     text = '/texts - work with texts\n/learn - learn words'
     bot.send_message(user_data['user_id'], text)
@@ -50,11 +51,21 @@ def welcome(message):
 
 @bot.message_handler(commands=['learn'])
 def welcome(message):
+    user_data = get_user_data(message=message)
+
+    if user_data['user_id'] != int(MY_ID):
+        return 
+    
     context.transition_to(learn.Learn())
     context.hello(message=message)
 
 @bot.message_handler(commands=['texts'])
 def welcome(message):
+    user_data = get_user_data(message=message)
+
+    if user_data['user_id'] != int(MY_ID):
+        return 
+    
     context.transition_to(text.Text())
     context.start(message=message)
 
@@ -69,6 +80,11 @@ def lalala(message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
+    user_data = get_user_data(call=call)
+
+    if user_data['user_id'] != int(MY_ID):
+        return 
+    
     context.inline_buttons(call=call)
 
 def get_user_data(message=None, call=None, channel=None):
@@ -99,4 +115,4 @@ if __name__ == "__main__":
     context = context.Context(default.Default())
     bot.remove_webhook()
     print("Starting bot with polling...")
-    bot.polling(none_stop=True, interval=1, timeout=20)
+    bot.polling(none_stop=True, interval=1, timeout=60)
