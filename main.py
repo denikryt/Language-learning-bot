@@ -42,14 +42,14 @@ def welcome(message):
     if user_data['user_id'] != int(MY_ID):
         return 
     
-    text = '/texts - work with texts\n/learn - learn words'
+    text = '/texts - to work with texts\n/guess_word - to play the guess word game'
     bot.send_message(user_data['user_id'], text)
 
     db.set_collection(str(user_data['user_id']))
     db.update_last_message_id(user_data['message_id']+1) 
     return
 
-@bot.message_handler(commands=['guess_the_word'])
+@bot.message_handler(commands=['guess_word'])
 def welcome(message):
     user_data = get_user_data(message=message)
 
