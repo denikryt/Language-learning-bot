@@ -164,6 +164,7 @@ class Game():
     def start(self, message=None, call=None):
         self.loose = False
         self.added_translation = False
+        self.translation_mark = 5
         self.attempts = 3
         self.help = 3
         self.char = 0
