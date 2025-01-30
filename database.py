@@ -161,6 +161,16 @@ class Database:
         if result:
             return True
         return False
+    
+    def get_examples_by_word(self, word, collection_name: str):
+        self.collection = Database._db[collection_name]
+
+        result = self.collection.find_one({'words.word': word})
+        if result:
+            for item in result['words']:
+                if item['word'] == word:
+                    return item['examples']
+        return None
 
 
 db = Database()

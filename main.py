@@ -6,7 +6,7 @@ from bot import BOT as bot
 import traceback
 import context
 import default
-import learn
+import GuessTheWord
 import os
 import database
 import text
@@ -49,14 +49,14 @@ def welcome(message):
     db.update_last_message_id(user_data['message_id']+1) 
     return
 
-@bot.message_handler(commands=['learn'])
+@bot.message_handler(commands=['guess_the_word'])
 def welcome(message):
     user_data = get_user_data(message=message)
 
     if user_data['user_id'] != int(MY_ID):
         return 
     
-    context.transition_to(learn.Learn())
+    context.transition_to(GuessTheWord.Game())
     context.hello(message=message)
 
 @bot.message_handler(commands=['texts'])

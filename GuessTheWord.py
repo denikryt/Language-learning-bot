@@ -1,10 +1,12 @@
 from collections import OrderedDict
 from telebot import types, apihelper
-from bot import BOT as bot
+from telebot.types import ReactionTypeEmoji 
+from bot import BOT as bot, ASSISTANT as assistant
 import random
 from database import db
+import time
 
-class Learn():
+class Game():
     """
     Description
     """
@@ -23,9 +25,11 @@ class Learn():
 
     test_window = 0
     result_window = 0
+    translation_mark = 5
 
     guessing = False
     test = False
+    added_translation = False
 
     def inline_buttons(self, message=None, call=None):
         user_data = self.get_user_data(message, call)
@@ -71,7 +75,15 @@ class Learn():
             self.testing = False
             self.send_finish_message(message, call)
 
-
+        if call.data == 'add_translation':
+            self.added_translation = True
+            self.translation_mark = 0
+            self.send_correct_message(message, call)
+            
+        if call.data == 'save_text':
+            db.save_text(text=self.definition, collection_name=str(user_data['user_id']))
+            bot.set_message_reaction(user_data['user_id'], self.game_window, [ReactionTypeEmoji('👍')], is_big=False)
+            
     def printing(self, chat_id=None):
         pass
 
@@ -114,6 +126,9 @@ class Learn():
         self.words = result
 
         self.random_word = self.select_word(str(user_data['user_id']))
+        self.word_examples = db.get_examples_by_word(self.random_word, str(user_data['user_id']))
+        self.random_word_example = random.choice(self.word_examples)
+        self.definition = assistant.get_definition(word=self.random_word, example=self.random_word_example)
 
         self.translate = db.get_translations(self.random_word, str(user_data['user_id']))
         self.translate = ', '.join(self.translate)
@@ -141,23 +156,14 @@ class Learn():
         pass
 
     def name_id(self, message, call, get=None):
-        if message:
-            user_name = message.from_user.first_name
-            user_id = message.chat.id
-            message_id = message.message_id
-        if call :
-            user_name = call.from_user.first_name
-            user_id = call.from_user.id
-            message_id = call.message.message_id
-        if get == 'message_id':
-            return message_id
-        return user_name, user_id
+        pass
 
     def random_words(self, message, call):
         pass
 
     def start(self, message=None, call=None):
         self.loose = False
+        self.added_translation = False
         self.attempts = 3
         self.help = 3
         self.char = 0
@@ -169,35 +175,64 @@ class Learn():
 
         self.spelling = ''.join(self.stars)
         self.send_start_message(message, call)
+
+    def game_text(self):
+        if self.added_translation:
+            text = f'Guess the word\n<b>{self.definition}</b>\nTranslation: <b>{self.translate}</b>\n{self.spelling}\nAttempts: {str(self.attempts)}\nHints: {str(self.help)}'
+        else:
+            text = f'Guess the word\n<b>{self.definition}</b>\n{self.spelling}\nAttempts: {str(self.attempts)}\nHints: {str(self.help)}'
+        return text
+    
+    def loose_text(self):
+        text = f'You loose!\n<b>{self.definition}</b>\ndescribes the word\n<b>{self.random_word}</b>\nTranslation: <b>{self.translate}</b>'
+        return text
+    
+    def win_text(self):
+        text = f'Correct!\n<b>{self.definition}</b>\ndescribes the word\n<b>{self.random_word}</b>\nTranslation: <b>{self.translate}</b>'
+        return text
+    
+    def finish_text(self):
+        text = f'Well done!\nYour results:\n'
+        for x in self.guessed:
+            text += x + '\n'
+        return text
         
+    def inline_game_buttons(self):
+        inline_markup = types.InlineKeyboardMarkup(row_width=2)
+        item1 = types.InlineKeyboardButton('help', callback_data='help')
+        item2 = types.InlineKeyboardButton('give up', callback_data='give_up')
+        item3 = types.InlineKeyboardButton('translation', callback_data='add_translation')
+        item4 = types.InlineKeyboardButton('save as text', callback_data='save_text')
+        inline_markup.add(item1, item2, item3, item4)
+        return inline_markup
+    
+    def inline_end_buttons(self):
+        inline_markup = types.InlineKeyboardMarkup(row_width=1)
+        item1 = types.InlineKeyboardButton('new word', callback_data='new')
+        item2 = types.InlineKeyboardButton('finish', callback_data='finish')
+        inline_markup.add(item1, item2)
+        return inline_markup
+
     def send_win_message(self, message=None, call=None):
         user_data = self.get_user_data(message, call)
 
-        newWord = types.InlineKeyboardButton('new word', callback_data='new')
-        finish = types.InlineKeyboardButton('finish', callback_data='finish')
-
-        text = f'Correct!\n<b>{self.translate}</b>\nmeans\n<b>{self.random_word}</b>'
-        markup = types.InlineKeyboardMarkup(row_width=1)
-        markup.add(newWord, finish)
+        inline_markup = self.inline_end_buttons()
+        text = self.win_text()
 
         bot.delete_message(user_data['user_id'],message_id=self.keyboard_message)
-        bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
+        bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=inline_markup, parse_mode='html')
 
     def send_start_message(self, message=None, call=None):
         user_data = self.get_user_data(message, call)
 
-        inline_markup = types.InlineKeyboardMarkup(row_width=2)
-        item1 = types.InlineKeyboardButton('help', callback_data='help')
-        item2 = types.InlineKeyboardButton('give up', callback_data='give_up')
-        inline_markup.add(item1, item2)
+        inline_markup = self.inline_game_buttons()
 
         keyboard_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         items = [types.KeyboardButton(item) for item in self.random_word]
         random.shuffle(items)
         keyboard_markup.add(*items)
-        
-        text = f'Translate the word\n<b>{self.translate}</b>\n{self.spelling}\nAttempts: {str(self.attempts)}\nHints: {str(self.help)}'
-
+                
+        text = self.game_text()
         msg = bot.send_message(user_data['user_id'], text, reply_markup=inline_markup, parse_mode='html')
         self.game_window = msg.message_id
 
@@ -209,50 +244,37 @@ class Learn():
     def send_correct_message(self, message=None, call=None):
         user_data = self.get_user_data(message, call)
         
-        markup = types.InlineKeyboardMarkup(row_width=2)
-        item1 = types.InlineKeyboardButton('help', callback_data='help')
-        item2 = types.InlineKeyboardButton('give up', callback_data='give_up')
-        markup.add(item1,item2)
+        inline_markup = self.inline_game_buttons()
+        text = self.game_text()
 
-        text = f'Translate the word\n<b>{self.translate}</b>\n{self.spelling}\nAttempts: {str(self.attempts)}\nHints: {str(self.help)}'
-
-        bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
+        bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=inline_markup, parse_mode='html')
     
     def send_incorrect_message(self, message=None, call=None):
         user_data = self.get_user_data(message, call)
         
-        markup = types.InlineKeyboardMarkup(row_width=2)
-        item1 = types.InlineKeyboardButton('help', callback_data='help')
-        item2 = types.InlineKeyboardButton('give up', callback_data='give_up')
-        markup.add(item1,item2)
+        inline_markup = self.inline_game_buttons()
 
-        text = f'Translate the word\n<b>{self.translate}</b>\n{self.spelling}\nAttempts: {str(self.attempts)}\nHints: {str(self.help)}'
+        text = self.game_text()
 
-        bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
+        bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=inline_markup, parse_mode='html')
 
     def send_loose_message(self, message=None, call=None):
         user_data = self.get_user_data(message, call)
 
-        markup = types.InlineKeyboardMarkup(row_width=1)
-        item3 = types.InlineKeyboardButton('new word', callback_data='new')
-        item5 = types.InlineKeyboardButton('finish', callback_data='finish')
-        markup.add(item3, item5)
-
-        text = f'You loose!\n<b>{self.translate}</b>\nmeans\n<b>{self.random_word}</b>'
+        inline_markup = self.inline_end_buttons()
+        text = self.loose_text()
 
         bot.delete_message(user_data['user_id'],message_id=self.keyboard_message)
-        bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
+        bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=inline_markup, parse_mode='html')
 
     def send_finish_message(self, message=None, call=None):
         user_data = self.get_user_data(message, call)
 
         markup = types.InlineKeyboardMarkup(row_width=1)
-        item3 = types.InlineKeyboardButton('new word', callback_data='new')
-        markup.add(item3)
+        item1 = types.InlineKeyboardButton('new word', callback_data='new')
+        markup.add(item1)
 
-        text = f'Well done!\nYour results:\n'
-        for x in self.guessed:
-            text += x + '\n'
+        text = self.finish_text()
         
         bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
 
@@ -277,7 +299,7 @@ class Learn():
             self.testing = False
             self.spelling = word
 
-            new_mark = self.attempts + self.help
+            new_mark = self.attempts + self.help + self.translation_mark
             db.update_word_level(word=self.random_word, collection_name=str(user_data['user_id']), level=new_mark + self.mark)
 
             self.guessed.append(f"<b>{self.random_word}</b> : {str(self.mark)} +{str(new_mark)}")
@@ -292,7 +314,7 @@ class Learn():
             if self.spelling == word:
                 self.testing = False
 
-                new_mark = self.attempts + self.help
+                new_mark = self.attempts + self.help + self.translation_mark
                 db.update_word_level(word=self.random_word, collection_name=str(user_data['user_id']), level=new_mark + self.mark)
 
                 self.guessed.append(f"<b>{self.random_word}</b> : {str(self.mark)} +{str(new_mark)}")
