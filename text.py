@@ -499,8 +499,7 @@ class Text(State):
         user_data = self.get_user_data(message=message, call=call)
         self.word_lang = self.detect_lang(self.text)
 
-        db.set_collection(str(user_data['user_id']))
-        db.save_word(word=self.word, language=self.word_lang, translations=[self.translated_word], examples=[self.sent])
+        db.save_word(word=self.word, language=self.word_lang, translations=[self.translated_word], examples=[self.sent], collection_name=str(user_data['user_id']))
 
     def instructions(self, message=None, call=None):
         user_data = self.get_user_data(message=message)
