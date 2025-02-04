@@ -238,30 +238,6 @@ class Text(State):
                 bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.visual_text, reply_markup=markup, parse_mode='html')
                 return
 
-            if call.data == 'reverse':
-
-                if self.reverse:
-                    self.reverse = False
-                    self.sent = self.original
-                else:
-                    self.original = self.sent
-                    self.reverse = True
-
-                    def has_cyrillic(text):
-                        return bool(re.search('[а-яА-Я]', text))
-
-                    if has_cyrillic(self.text):
-                        target = self.lang
-                    else:
-                        target = 'ru'
-
-                    self.sent = GoogleTranslator(source='auto', target=target).translate(self.sent)
-
-                bot.delete_message(chat_id=chat_id, message_id=self.question_window)
-                bot.delete_message(chat_id=chat_id, message_id=self.trans_window)
-                self.sentence_buttons(message, call)
-                self.buttons(message, call)
-
             if call.data == 'previus_plus':
                 if not self.free_input:
                     if self.current_ids[0] == 0:
@@ -363,7 +339,7 @@ class Text(State):
         self.last_message_id = self.trans_window
         
         db.set_collection(str(user_data['user_id']))
-        db.update_last_message_id(self.last_message_id)
+        db.update_last_message_id(self.last_message_id, str(user_data['user_id']))
 
     def sentence_buttons(self, message=None, call=None, state=None):
         user_data = self.get_user_data(message=message, call=call)
@@ -462,9 +438,6 @@ class Text(State):
 
         bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.trans_window, text=text, reply_markup=markup, parse_mode='html')
 
-    def vars(self, message=None, call=None, sents=None, count=None, lang=None):
-        pass
-
     def sent_to_words(self, sents):
         self.sent = sents[self.sent_count]
         self.words = re.findall(r"[\w']+", self.sent)
@@ -476,16 +449,6 @@ class Text(State):
         markup.add(*items)
 
         return markup
-
-    def name_id(self, message=None, call=None):
-        if message:
-            user_name = message.from_user.first_name
-            user_id = message.chat.id
-        if call:
-            user_name = call.from_user.first_name
-            user_id = call.from_user.id
-
-        return user_name, user_id
     
     def detect_lang(self, text):
         languages = [Language.ENGLISH, Language.SPANISH]
@@ -505,7 +468,7 @@ class Text(State):
         user_data = self.get_user_data(message=message)
         self.last_message_id = user_data['message_id']
 
-        db.update_last_message_id(self.last_message_id)
+        db.update_last_message_id(self.last_message_id, str(user_data['user_id']))
 
         if self.building:
             if self.adding or self.changing:
@@ -524,10 +487,6 @@ class Text(State):
                 self.free_input = False
             except ValueError:
                 self.free_input = True
-
-                if self.question_window:
-                    bot.delete_message(chat_id=user_data['user_id'], message_id=self.question_window)
-                    self.question_window = None
 
             bot.delete_message(chat_id=user_data['user_id'], message_id=user_data['message_id'])
             self.menu(message, call)
@@ -589,7 +548,7 @@ class Text(State):
             
             self.last_message_id += 1
             self.text_window = self.last_message_id
-            db.update_last_message_id(self.last_message_id)
+            db.update_last_message_id(self.last_message_id, str(user_data['user_id']))
         else:
             self.text = None
             bot.send_message(user_data['user_id'], 'Пока нет текстов!')
@@ -606,101 +565,6 @@ class Text(State):
         text = text.replace('<u>', '')
         text = text.replace('</u>', '')
         return text
-
-    def hello(self, message=None, call=None, data=None, reason=None, last_message=None, wiki_page=None):
-        user_name, user_id, message_id = self.vars(message,call)
-        db, sql = self.data_base(message, call)
-
-        self.text_count = 0
-        self.sent_count = 0
-        self.input_sentences = True
-        self.building = False
-        self.new_sentence = False
-
-        if not reason:
-            self.last_message_id = message_id
-            sql.execute("SELECT text FROM texts")
-            try:
-                self.all_texts = [text[0] for text in sql.fetchall()]
-                self.text = self.all_texts[0]
-            except IndexError :
-                pass
-
-        if reason == 'wiki':
-            self.wiki = True
-            self.wiki_page = wiki_page
-            self.all_texts = []
-            sql.execute("SELECT sentence FROM wiki WHERE title = ?",(wiki_page,))
-            index = sql.fetchall()[0][0]
-            if index == None:
-                sql.execute(f"UPDATE wiki SET sentence='{0}' WHERE title='{wiki_page}'")
-                db.commit()
-            else:
-                # if index > len 
-                self.text_count = index
-            # заполнить пуcтые ячейки в sentences
-            # self.titles = titles
-            self.last_message_id = last_message
-            symbols = 500
-
-            for title in data:
-                text = data[title]
-                l = len(data[title])
-                parts = int(len(text)/symbols) +1
-                part_index = 0
-                part = 0
-                
-                def to_last_point(part_index):
-                    end = slice.rindex('.')
-                    part_index += end+1
-                    final_text = slice[0:end+1]
-                    return part_index, final_text
-
-                while not part == parts:
-                    part += 1
-                    if parts > 1:
-                        section = data[title][part_index:]
-                        slice = section[0:symbols]
-
-                        if '.' not in slice:
-                            while '.' not in slice:
-                                if len(slice)+symbols < 4000:
-                                    slice = section[0:len(slice)+symbols]
-                                    part += 1
-                                    if '.' in slice:
-                                        part_index, final_text = to_last_point(part_index)
-                                        break
-
-                                if len(slice) >= len(section):
-                                    if '.' not in slice:
-                                        final_text = slice
-                                    else:
-                                        part_index, final_text = to_last_point(part_index)
-                                    break   
-                        else: 
-                            part_index, final_text = to_last_point(part_index)
-
-                    htmltitle = '<b>'+title+'</b>'
-                    all_text = htmltitle +'\n'+ final_text
-                    self.all_texts.append(all_text) 
-            
-            if self.text_count > len(self.all_texts)-1:
-                self.text_count = 0
-                sql.execute(f"UPDATE wiki SET sentence='{0}' WHERE title='{self.wiki_page}'")
-                db.commit()
-
-            self.text = self.all_texts[self.text_count]
-
-        bot.send_message(user_id, 'Получаю сообщения!')
-        self.last_message_id += 1
-        self.text_window = self.last_message_id
-        write(user_name, user_id, message_id=self.last_message_id, target='last message')
-
-        if self.text:
-            self.sentence_buttons(message, call)
-
-    def random_words(self, message):
-        pass
 
     def text_to_sents(self, text):
 

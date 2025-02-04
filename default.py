@@ -1,18 +1,30 @@
 from telebot import types
 from bot import BOT as bot
 from state import State
+from text import Text
+import context
 
 class Default(State):
     """
     Description
     """
-
+    def get_user_data(self, message=None, call=None):
+        if message:
+            user_name = message.from_user.first_name
+            user_id = message.chat.id
+            message_id = message.message_id
+        if call:
+            user_name = call.from_user.first_name
+            user_id = call.message.chat.id
+            message_id = call.message.message_id
+        return {'user_name': user_name, 'user_id': user_id, 'message_id': message_id}
+    
     def data_base(self, message, call):
         pass
 
     def inline_buttons(self, message=None, call=None):
         if call.data == 'continue':
-            self.context.transition_to(LoadText())
+            self.context.transition_to(Text())
             self.context.sents_to_words(message, call, None)
             # self.sent_to_words(call.message)
         if call.data == 'new':

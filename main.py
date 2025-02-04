@@ -5,14 +5,15 @@ from telebot.types import ReactionTypeEmoji
 from bot import BOT as bot
 import traceback
 import context
-import default
-import GuessTheWord
+from default import Default
+import guesstheword
 import os
 import database
 import text
 import nltk
 from dotenv import load_dotenv
 import os
+from topic_choice import TopicChoice
 
 load_dotenv()
 MY_ID = os.getenv('MY_ID')
@@ -46,8 +47,18 @@ def welcome(message):
     bot.send_message(user_data['user_id'], text)
 
     db.set_collection(str(user_data['user_id']))
-    db.update_last_message_id(user_data['message_id']+1) 
+    db.update_last_message_id(user_data['message_id']+1, str(user_data['user_id'])) 
     return
+
+@bot.message_handler(commands=['topics'])
+def welcome(message):
+    user_data = get_user_data(message=message)
+
+    if user_data['user_id'] != int(MY_ID):
+        return 
+    
+    context.transition_to(TopicChoice(context))
+    context.start(message=message)
 
 @bot.message_handler(commands=['guess_word'])
 def welcome(message):
@@ -56,7 +67,7 @@ def welcome(message):
     if user_data['user_id'] != int(MY_ID):
         return 
     
-    context.transition_to(GuessTheWord.Game())
+    context.transition_to(guesstheword.Game())
     context.hello(message=message)
 
 @bot.message_handler(commands=['texts'])
@@ -76,7 +87,7 @@ def lalala(message):
     if user_data['user_id'] != int(MY_ID):
         return
     
-    context.instructions(message)
+    context.instructions(message=message)
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
@@ -112,7 +123,7 @@ bot.send_message(MY_ID, 'helo')
 if __name__ == "__main__":
     """Client code"""
 
-    context = context.Context(default.Default())
+    context = context.Context(Default())
     bot.remove_webhook()
     print("Starting bot with polling...")
-    bot.polling(none_stop=True, interval=1, timeout=60)
+    bot.polling(none_stop=True, interval=0, long_polling_timeout=60)

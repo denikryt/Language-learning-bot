@@ -69,7 +69,8 @@ class Database:
             return [item['text'] for item in result['texts']]
         return None
     
-    def update_last_message_id(self, message_id):
+    def update_last_message_id(self, message_id, collection_name: str):
+        self.collection = Database._db[collection_name]
         return self.collection.update_one({}, {'$set': {'last_message_id': message_id}})
     
     def save_text(self, text, collection_name: str):

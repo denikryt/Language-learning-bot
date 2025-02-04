@@ -22,49 +22,9 @@ class State(ABC):
         pass
 
     @abstractmethod
-    def inline_buttons(self, message=None, call=None):
-        pass
-
-    @abstractmethod
-    def printing(self, message, call):
-        pass
-
-    @abstractmethod
-    def sentence_buttons(self, message=None, call=None):
-        pass
-
-    @abstractmethod
-    def menu(self, message, call):
-        pass
-
-    @abstractmethod
-    def vars(self, message, sents, count):
-        pass
-
-    @abstractmethod
-    def hello(self, *args, **kwargs) -> None:
-        pass
-
-    @abstractmethod
-    def text_to_sents(self, message, call):
-        pass
-
-    @abstractmethod
-    def sent_to_words(self, message, sents):
-        pass
-
-    @abstractmethod
-    def write_word(self, message):
-        pass
-
-    @abstractmethod
-    def random_words(self):
-        pass
-
-    @abstractmethod
-    def words_buttons(self, message):
-        pass
-
-    @abstractmethod
     def instructions(self, message) -> None:
+        pass
+
+    @abstractmethod
+    def get_user_data(self, message,call) -> None:
         pass

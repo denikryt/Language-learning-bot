@@ -1,7 +1,8 @@
 from collections import OrderedDict
 from telebot import types, apihelper
 from telebot.types import ReactionTypeEmoji 
-from bot import BOT as bot, ASSISTANT as assistant
+from bot import BOT as bot
+from aiassistant import ASSISTANT as assistant
 import random
 from database import db
 import time
@@ -30,6 +31,12 @@ class Game():
     guessing = False
     test = False
     added_translation = False
+
+    definition_instructions = "Provide an explanation and definition of the word only.\
+        Give an aswer in a simple format, without any additional information or formatting. \
+        Do not write the word itself in the answer."
+    
+    
 
     def inline_buttons(self, message=None, call=None):
         user_data = self.get_user_data(message, call)
@@ -83,20 +90,6 @@ class Game():
         if call.data == 'save_text':
             db.save_text(text=self.definition, collection_name=str(user_data['user_id']))
             bot.set_message_reaction(user_data['user_id'], self.game_window, [ReactionTypeEmoji('👍')], is_big=False)
-            
-    def printing(self, chat_id=None):
-        pass
-
-    def menu(self,chat_id=None):
-        pass
-
-    def vars(self, message, sents, count):
-        pass
-
-    def reset(self):
-        self.test = False
-        self.testing = False
-        self.guessed = []
 
     def get_user_data(self, message=None, call=None):
         if message:
@@ -128,7 +121,9 @@ class Game():
         self.random_word = self.select_word(str(user_data['user_id']))
         self.word_examples = db.get_examples_by_word(self.random_word, str(user_data['user_id']))
         self.random_word_example = random.choice(self.word_examples)
-        self.definition = assistant.get_definition(word=self.random_word, example=self.random_word_example)
+
+        text = f"Word: {self.random_word}, sentence: {self.random_word_example}"
+        self.definition = assistant.get_definition(text=text, instructions=self.definition_instructions)
 
         self.translate = db.get_translations(self.random_word, str(user_data['user_id']))
         self.translate = ', '.join(self.translate)
@@ -142,24 +137,6 @@ class Game():
         weights = [100 - value / len(level_list) for value in level_list]
 
         return random.choices(self.words, weights=tuple(weights), k=1)[0]
-
-    def text_to_sents(self, user):
-        pass
-
-    def sents_to_words(self, message, sents):
-        pass
-
-    def write_word(self, message):
-        pass
-
-    def buttons(self, message):
-        pass
-
-    def name_id(self, message, call, get=None):
-        pass
-
-    def random_words(self, message, call):
-        pass
 
     def start(self, message=None, call=None):
         self.loose = False
@@ -335,115 +312,4 @@ class Game():
                 self.guessed.append(f"<b>{self.random_word}</b> : {str(self.mark)} +{str(mark)}")
                 self.send_loose_message(message,call)
             return
-                
-    def send_message(self, message=None, call=None, case=None, message_id=None, user_id=None):
-        
-        cases = ['correct', 'incorrect', 'help'] 
-        result = ['win', 'fast_win', 'loose', 'give_up'] 
-
-        markup = types.InlineKeyboardMarkup(row_width=2)
-
-        item1 = types.InlineKeyboardButton('Подсказка', callback_data='help')
-        item2 = types.InlineKeyboardButton('Сдаюсь', callback_data='give_up')
-        item3 = types.InlineKeyboardButton('Новое слово', callback_data='new')
-        item4 = types.InlineKeyboardButton('Отгадать', callback_data='guess')
-        item5 = types.InlineKeyboardButton('Закончить', callback_data='finish')
-
-        if case == 'empty db':
-            return
-
-        if case == 'new word':
-            text = f'Переведи слово\n<b>{self.translate}</b>'
-            markup.add(item2,item4)
-            bot.send_message(user_id, text, reply_markup=markup, parse_mode='html')
-        else:
-            user_name, user_id = self.name_id(message, call)
-            text = f'Переведи слово\n<b>{self.translate}</b>\n{self.spelling}\nПопыток: {str(self.attempts)}\nПодсказок: {str(self.help)}'
-            markup.add(item1,item2)
-
-            markup2 = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            items = [types.KeyboardButton(item) for item in self.random_word]
-            random.shuffle(items)
-            markup2.add(*items)
-
-            if case == 'send':
-                msg = bot.send_message(user_id, text, reply_markup=markup, parse_mode='html')
-                self.game_window = msg.message_id
-
-                msg = bot.send_message(user_id, 'Выбери букву', reply_markup=markup2, parse_mode='html')
-                self.keyboard_message = msg.message_id
-
-                self.last_message = msg.message_id
-                
-                return
-
-            if case in cases:
-                bot.edit_message_text(chat_id=user_id, message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
-
-            if case == 'delete':
-                bot.delete_message(chat_id=user_id, message_id=message_id)
-                return
-
-            if case in result:
-                if case == 'give_up':
-                    mark = 0
-                else:
-                    mark = self.attempts + self.help
-                self.guessed.append(f"{self.translate} - {self.random_word} : {str(self.mark)} +{str(mark)}")    
-
-            if case == 'win':
-
-                text = f'Правильно!\n<b>{self.translate}</b>\nозначает\n<b>{self.random_word}</b>'
-                markup = types.InlineKeyboardMarkup(row_width=1)
-                markup.add(item3, item5)
-
-                db, sql = self.data_base(user_name, user_id)
-
-                new_level = self.mark+ self.attempts + self.help
-                sql.execute(f"UPDATE english SET level = {new_level} WHERE word = '{self.random_word}'")
-                db.commit()
-
-                bot.delete_message(user_id,message_id=self.keyboard_message)
-                bot.edit_message_text(chat_id=user_id, message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
-
-            if case == 'fast_win':
-
-                text = f'СУПЕР!\n<b>{self.translate}</b>\nозначает\n<b>{self.random_word}</b>'
-                markup = types.InlineKeyboardMarkup(row_width=1)
-                markup.add(item3, item5)
-
-                db, sql = self.data_base(user_name, user_id)
-
-                new_level = self.mark+ self.attempts + self.help
-                sql.execute(f"UPDATE english SET level = {new_level} WHERE word = '{self.random_word}'")
-                db.commit()
-
-                bot.delete_message(user_id,message_id=self.keyboard_message)
-                bot.edit_message_text(chat_id=user_id, message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
-
-            if case == 'loose' or case == 'give_up':
-
-                text = f'Проиграл!\n<b>{self.translate}</b>\noзначает\n<b>{self.random_word}</b>'
-                markup = types.InlineKeyboardMarkup(row_width=1)
-                markup.add(item3, item5)
-
-                # if self.guessing:
-                #     self.guessing = False
-                bot.delete_message(user_id,message_id=self.keyboard_message)
-                
-                bot.edit_message_text(chat_id=user_id, message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
-
-            if case == 'finish':
-
-                markup = types.InlineKeyboardMarkup(row_width=1)
-                markup.add(item3)
-
-                text = f'Молодец!\nТвой результат:\n'
-                for x in self.guessed:
-                    text += x + '\n'
-                
-                bot.edit_message_text(chat_id=user_id, message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
-
-
-        # return
-    
+            
