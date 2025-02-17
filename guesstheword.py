@@ -5,7 +5,7 @@ from bot import BOT as bot
 from aiassistant import ASSISTANT as assistant
 import random
 from database import db
-import time
+import emoji
 
 class Game():
     """
@@ -50,14 +50,16 @@ class Game():
             return
 
         if call.data == 'help':
-            if self.chars[self.char] == ' ':
-                self.char += 1
+            if self.chars[self.char_count] == ' ':
+                self.char_count += 1
 
             if self.help > 0:
                 self.help -= 1
 
-                self.stars[self.char] = self.chars[self.char]
+                char = self.chars[self.char_count]
+                self.stars[self.char_count] = char
                 self.spelling = ''.join(self.stars)
+                self.keyboard_chars.remove(char)
 
                 if self.spelling == self.random_word.lower():
                     mark = 0
@@ -66,7 +68,7 @@ class Game():
                     self.send_loose_message(message, call)
                     return
 
-                self.char += 1
+                self.char_count += 1
 
                 self.send_correct_message(message, call)
             else:
@@ -154,7 +156,7 @@ class Game():
         self.shuffle_mark = 10
         self.attempts = 3
         self.help = 3
-        self.char = 0
+        self.char_count = 0
         self.spelling = ''
         self.chars = []
         self.chars = [char.lower() for char in self.random_word]
@@ -212,9 +214,20 @@ class Game():
     def send_letters_message(self, message=None, call=None):
         user_data = self.get_user_data(message, call)
 
+        random.shuffle(self.keyboard_chars)
         keyboard_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         items = [types.KeyboardButton(item) for item in self.keyboard_chars]
-        random.shuffle(items)
+        keyboard_markup.add(*items)
+
+        msg = bot.send_message(user_data['user_id'], 'Choose the letter', reply_markup=keyboard_markup, parse_mode='html')
+        self.letters_message = msg.message_id
+        self.last_message_id = msg.message_id
+
+    def edit_letters_message(self, message=None, call=None):
+        user_data = self.get_user_data(message, call)
+
+        keyboard_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        items = [types.KeyboardButton(item) for item in self.keyboard_chars]
         keyboard_markup.add(*items)
 
         msg = bot.send_message(user_data['user_id'], 'Choose the letter', reply_markup=keyboard_markup, parse_mode='html')
@@ -231,8 +244,6 @@ class Game():
         self.game_window = msg.message_id
 
         self.last_message_id = msg.message_id
-
-        bot.edit_message_reply_markup
 
     def send_win_message(self, message=None, call=None):
         user_data = self.get_user_data(message, call)
@@ -253,7 +264,7 @@ class Game():
 
         if self.help_shuffle_letters:
             bot.delete_message(chat_id=user_data['user_id'], message_id=self.letters_message)
-            self.send_letters_message(message, call)
+            self.edit_letters_message(message, call)
 
         bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=inline_markup, parse_mode='html')
 
@@ -287,6 +298,13 @@ class Game():
         
         bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.game_window, text=text, reply_markup=markup, parse_mode='html')
 
+    def mark_keyboard_letter(self, char):
+        for i, c in enumerate(self.keyboard_chars):
+            if c == char:
+                c += emoji.emojize(':check_mark:')
+                self.keyboard_chars[i] = c
+                break
+
     def instructions(self, message=None, call=None):
         user_data = self.get_user_data(message, call)
 
@@ -298,11 +316,11 @@ class Game():
 
         text = message.text.strip().lower()
         word = self.random_word.lower()
-        char = self.chars[self.char]
+        char = self.chars[self.char_count]
 
         if char == ' ':
-            self.char += 1
-            char = self.chars[self.char]
+            self.char_count += 1
+            char = self.chars[self.char_count]
 
         if text == word:
             self.testing = False
@@ -316,10 +334,11 @@ class Game():
             return
 
         if text == char:
-            self.stars[self.char] = char
+            self.stars[self.char_count] = char
             self.spelling = ''.join(self.stars)
-            self.char += 1
-            self.keyboard_chars.remove(char)
+            self.char_count += 1
+
+            self.mark_keyboard_letter(char)
 
             if self.spelling == word:
                 self.testing = False

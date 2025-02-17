@@ -12,6 +12,22 @@ data_schema = {
     "channel_id": os.getenv('MY_CHANNEL_ID')
 }
 
+# object_schema = {
+#         "text": "",
+#         "language": "",
+#         "words": {
+#             "word": "",
+#             "level": 0,
+#             "translations": []
+#         }
+#     }
+
+# data_schema = {
+#     "objects": {},
+#     "last_message_id": 0,
+#     "channel_id": os.getenv('MY_CHANNEL_ID')
+# }
+
 words_schema = {
     "word": "",
     "level": 0,
