@@ -423,7 +423,6 @@ class Text(State):
         sign = ''
         
         exist_translation = db.get_word_translation(self.word, str(user_data['user_id']))
-        print('exist_translation', exist_translation)
 
         if exist_translation or self.changing or self.adding:
 
@@ -447,7 +446,6 @@ class Text(State):
         else:
             self.word_translation = [GoogleTranslator(source='auto', target='ru').translate(self.word)]
 
-        print('word_translation', self.word_translation)
         translation = ', '.join(self.word_translation)
         text = sign+'<b>'+self.word+'</b>' + '\nозначает:\n' + '<b>'+translation+'</b>'
 
