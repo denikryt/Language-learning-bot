@@ -40,11 +40,12 @@ class Text(State):
     # all_texts = []
 
     # changing_lang = False
-    new_translate = False
+    new_translation = False
     # free_input = False
     changing = False
     adding = False
     adding_input = False
+    updating_translation = False
     # all_text = False
     # reverse = False
     # wiki = False
@@ -58,15 +59,21 @@ class Text(State):
 
             if call.data == 'write':
                 self.write_word(message, call)
-                bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.trans_window, text='Записано!\n' + '<b>'+self.word+'</b>' + ':\n' + '<b>'+self.translated_word+'</b>', parse_mode='html')
+
+                translation = ', '.join(self.word_translation)
+                text = f'Записано!\n<b>{self.word}</b>:\n<b>{translation}</b>'
+
+                bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.trans_window, text=text, parse_mode='html')
                 return
             
             if call.data == 'change':
                 self.changing = True
+                self.updating_translation = True
                 self.menu(message, call)
 
             if call.data == 'add':
                 self.adding = True
+                self.updating_translation = True
                 self.menu(message, call)
 
             if call.data == 'translate':
@@ -93,6 +100,7 @@ class Text(State):
                 self.translating_text = False
                 self.changing = False
                 self.adding = False
+                self.updating_translation = False
 
                 if len(self.all_texts) == 1:
                     return
@@ -124,6 +132,7 @@ class Text(State):
                 self.translating_text = False
                 self.changing = False
                 self.adding = False
+                self.updating_translation = False
 
                 if len(self.all_texts) == 1:
                     return
@@ -207,6 +216,7 @@ class Text(State):
                 self.adding = False
                 self.changing = False
                 self.multiple_sents = False
+                self.updating_translation = False
 
                 markup = self.text_buttons(message, call)
                 bot.delete_message(chat_id=user_data['user_id'], message_id=self.question_window)
@@ -291,7 +301,6 @@ class Text(State):
                     return
 
                 self.word_to_write = ' '.join([x for x in self.words[first_word:last_word]])
-                # print('word_to_write',self.word_to_write)
 
                 markup = types.InlineKeyboardMarkup(row_width=2)
                 item1 = types.InlineKeyboardButton(emoji.emojize(':heavy_minus_sign:', use_aliases=True), callback_data='minus')
@@ -412,40 +421,34 @@ class Text(State):
 
         sign = ''
         
-        self.exist_word = db.get_word_translation(self.word, str(user_data['user_id']))
+        exist_translation = db.get_word_translation(self.word, str(user_data['user_id']))
+        print('exist_translation', exist_translation)
 
-        if self.exist_word or self.changing or self.adding:
+        if exist_translation or self.changing or self.adding:
 
-            if self.exist_word:
-                x = [x for x in self.exist_word]
-                self.translated_word = ', '.join(x)
+            if exist_translation:
+                self.word_translation = exist_translation
                 sign = 'Это слово уже есть!\n'
 
             if self.changing:
-                if self.new_translate:
-                    self.translated_word = self.new_translate
-                    self.new_translate = None
+                if self.new_translation:
+                    self.word_translation = [self.new_translation]
+                    self.new_translation = None
                 else:
                     sign = '<b>Кинь свой перевод!</b>\n'
 
             if self.adding:
-                if self.new_translate:
-                    self.translated_word = self.translated_word + ', ' + self.new_translate
-                    self.new_translate = None
+                if self.new_translation:
+                    self.word_translation.append(self.new_translation)
+                    self.new_translation = None
                 else:
                     sign = '<b>Добавь перевод!</b>\n'
         else:
-            def has_cyrillic(text):
-                return bool(re.search('[а-яА-Я]', text))
+            self.word_translation = [GoogleTranslator(source='auto', target='ru').translate(self.word)]
 
-            if has_cyrillic(self.word):
-                target = self.lang
-            else:
-                target = 'ru'
-
-            self.translated_word = GoogleTranslator(source='auto', target=target).translate(self.word)
-
-        text = sign+'<b>'+self.word+'</b>' + '\nозначает:\n' + '<b>'+self.translated_word+'</b>'
+        print('word_translation', self.word_translation)
+        translation = ', '.join(self.word_translation)
+        text = sign+'<b>'+self.word+'</b>' + '\nозначает:\n' + '<b>'+translation+'</b>'
 
         bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.trans_window, text=text, reply_markup=markup, parse_mode='html')
 
@@ -473,7 +476,11 @@ class Text(State):
         user_data = self.get_user_data(message=message, call=call)
         self.word_lang = self.detect_lang(self.text)
 
-        db.save_word(word=self.word, language=self.word_lang, translations=[self.translated_word], examples=[self.sent], collection_name=str(user_data['user_id']))
+        if self.updating_translation:
+            db.update_word_translation(word=self.word, translations=self.word_translation, collection_name=str(user_data['user_id']))
+            self.updating_translation = False
+        else:
+            db.save_word(word=self.word, language=self.word_lang, translations=self.word_translation, examples=[self.sent], collection_name=str(user_data['user_id']))
 
     def instructions(self, message=None, call=None):
         user_data = self.get_user_data(message=message)
@@ -483,7 +490,7 @@ class Text(State):
 
         if self.building:
             if self.adding or self.changing:
-                self.new_translate = message.text
+                self.new_translation = message.text
                 bot.delete_message(chat_id=user_data['user_id'], message_id=user_data['message_id'])
                 self.menu(message, call)
 

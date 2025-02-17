@@ -115,7 +115,11 @@ class Database:
         self.collection = Database._db[collection_name]
         self.collection.update_one({}, {'$pull': {'texts': {'text': text}}})
 
-    def save_word(self, word, language, translations, examples, collection_name: str):
+    def update_word_translation(self, word, translations: list, collection_name: str):
+        self.collection = Database._db[collection_name]
+        self.collection.update_one({'words.word': word}, {'$set': {'words.$.translations': translations}})
+
+    def save_word(self, word, language, translations: list, examples: list, collection_name: str):
         self.collection = Database._db[collection_name]
         self.collection.update_one({}, {'$push': {'words': {
             'word': word, 
