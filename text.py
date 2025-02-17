@@ -427,7 +427,8 @@ class Text(State):
         if self.exist_translation or self.changing or self.adding:
 
             if self.exist_translation:
-                self.word_translation = self.exist_translation
+                if not self.updating_translation:
+                    self.word_translation = self.exist_translation
                 sign = 'Это слово уже есть!\n'
 
             if self.changing:
