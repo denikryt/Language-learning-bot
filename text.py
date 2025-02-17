@@ -422,12 +422,12 @@ class Text(State):
 
         sign = ''
         
-        exist_translation = db.get_word_translation(self.word, str(user_data['user_id']))
+        self.exist_translation = db.get_word_translation(self.word, str(user_data['user_id']))
 
-        if exist_translation or self.changing or self.adding:
+        if self.exist_translation or self.changing or self.adding:
 
-            if exist_translation:
-                self.word_translation = exist_translation
+            if self.exist_translation:
+                self.word_translation = self.exist_translation
                 sign = 'Это слово уже есть!\n'
 
             if self.changing:
@@ -476,10 +476,12 @@ class Text(State):
         self.word_lang = self.detect_lang(self.text)
 
         if self.updating_translation:
-            db.update_word_translation(word=self.word, translations=self.word_translation, collection_name=str(user_data['user_id']))
-            self.updating_translation = False
-        else:
-            db.save_word(word=self.word, language=self.word_lang, translations=self.word_translation, examples=[self.sent], collection_name=str(user_data['user_id']))
+            if self.exist_translation:
+                db.update_word_translation(word=self.word, translations=self.word_translation, collection_name=str(user_data['user_id']))
+                self.updating_translation = False
+                return
+            
+        db.save_word(word=self.word, language=self.word_lang, translations=self.word_translation, examples=[self.sent], collection_name=str(user_data['user_id']))
 
     def instructions(self, message=None, call=None):
         user_data = self.get_user_data(message=message)
