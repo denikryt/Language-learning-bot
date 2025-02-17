@@ -218,10 +218,11 @@ class Text(State):
                 self.multiple_sents = False
                 self.updating_translation = False
 
+                text = self.count_texts()
                 markup = self.text_buttons(message, call)
                 bot.delete_message(chat_id=user_data['user_id'], message_id=self.question_window)
                 bot.delete_message(chat_id=user_data['user_id'], message_id=self.trans_window)
-                bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.visual_text, reply_markup=markup, parse_mode='html')
+                bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=text, reply_markup=markup, parse_mode='html')
 
             if call.data == 'delete':
                 if not self.text and not self.text_window:
