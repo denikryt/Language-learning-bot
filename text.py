@@ -85,7 +85,7 @@ class Text(State):
                 
                 text = self.count_texts()
                 markup = self.text_buttons(message, call)
-                bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.visual_text, reply_markup=markup, parse_mode='html')
+                bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=text, reply_markup=markup, parse_mode='html')
                 return
 
             if call.data == 'next':
