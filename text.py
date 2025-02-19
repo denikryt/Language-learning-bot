@@ -46,7 +46,7 @@ class Text(State):
     adding = False
     adding_input = False
     updating_translation = False
-    # all_text = False
+    all_text = False
     # reverse = False
     # wiki = False
     multiple_sents = False
@@ -344,7 +344,8 @@ class Text(State):
         if len(self.sents) > 1:
             self.multiple_sents = True
             text_markup = self.sentence_buttons(message, call)
-            bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=self.visual_text, reply_markup=text_markup, parse_mode='html')
+            text = self.count_texts()
+            bot.edit_message_text(chat_id=user_data['user_id'], message_id=self.text_window, text=text, reply_markup=text_markup, parse_mode='html')
         else:
             self.multiple_sents = False
             text_markup = self.text_buttons(message, call)
@@ -510,6 +511,8 @@ class Text(State):
 
             bot.delete_message(chat_id=user_data['user_id'], message_id=user_data['message_id'])
             self.menu(message, call)
+        else:
+            bot.delete_message(chat_id=user_data['user_id'], message_id=user_data['message_id'])
         return
 
     def get_user_data(self, message=None, call=None):
