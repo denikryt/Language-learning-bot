@@ -12,7 +12,6 @@ import database
 import text
 import nltk
 from dotenv import load_dotenv
-import os
 from topic_choice import TopicChoice
 
 load_dotenv()
