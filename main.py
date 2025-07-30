@@ -123,6 +123,11 @@ if __name__ == "__main__":
     """Client code"""
 
     context = context.Context(Default())
-    bot.remove_webhook()
-    print("Starting bot with polling...")
-    bot.polling(none_stop=True, interval=0, long_polling_timeout=60)
+    while True:
+        try:
+            print('Starting polling...')
+            bot.infinity_polling(long_polling_timeout=30, timeout=60)
+        except Exception as e:
+            print(f'Error polling: {e}')
+            import time
+            time.sleep(5)
